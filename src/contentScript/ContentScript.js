@@ -53,14 +53,18 @@ function ContentScript() {
   }, [data]);
 
   const filterByTitleWatch = (video) => {
-    if (wordReg.test(video.querySelector("#video-title").title)) return true;
+    if (!video.querySelector("#video-title")) return false;
+    if (wordReg.test(video.querySelector("#video-title").innerText))
+      return true;
     return false;
   };
 
   const filterByChannelWatch = (video) => {
+    if (!video.querySelector("#text-container > yt-formatted-string"))
+      return false;
     if (
       channelReg.test(
-        video.querySelector("#text-container > yt-formatted-string").innerHTML
+        video.querySelector("#text-container > yt-formatted-string").innerText
       )
     )
       return true;
