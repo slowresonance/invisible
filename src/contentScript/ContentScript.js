@@ -7,16 +7,14 @@ const getFlag = () => {
 };
 
 function ContentScript() {
-  const [data, setData] = useState([["at"], ["dean", "blue", "kylelandry"]]);
-  const queries = [
-    ["", ""],
-    ["#video-title", "#text-container > yt-formatted-string"],
-  ];
+  const [data, setData] = useState([
+    ["at", "valorant"],
+    ["dean", "blue", "valorant"],
+  ]);
   const [flag, setFlag] = useState(getFlag());
 
   let wordReg = new RegExp("a^");
   let channelReg = new RegExp("a^");
-  let videoCount = 0;
 
   // YouTube doesn't reload its pages, it replaces the history state
   // https://stackoverflow.com/questions/3522090/event-when-window-location-href-changes
@@ -30,7 +28,6 @@ function ContentScript() {
       mutations.forEach(() => {
         if (previousUrl !== document.location.href) {
           previousUrl = document.location.href;
-          console.log(document.location.href);
           setFlag(getFlag());
         }
       });
@@ -41,10 +38,6 @@ function ContentScript() {
       subtree: true,
     });
   };
-
-  useEffect(() => {
-    console.log(flag);
-  }, [flag]);
 
   useEffect(() => {
     if (data[0] !== []) {
@@ -59,20 +52,12 @@ function ContentScript() {
     }
   }, [data]);
 
-  chrome.runtime.onMessage.addListener((msg) => {
-    switch (msg.cmd) {
-      case "apply-filters":
-        console.log(msg);
-        break;
-    }
-  });
-
-  const filterByTitle = (video, queries) => {
+  const filterByTitleWatch = (video) => {
     if (wordReg.test(video.querySelector("#video-title").title)) return true;
     return false;
   };
 
-  const filterByChannel = (video) => {
+  const filterByChannelWatch = (video) => {
     if (
       channelReg.test(
         video.querySelector("#text-container > yt-formatted-string").innerHTML
@@ -82,8 +67,12 @@ function ContentScript() {
     return false;
   };
 
-  const applyFilters = () => {
+  const applyFiltersWatch = () => {
+    console.log("AFW 👀");
+
     const selector = "#items > ytd-item-section-renderer > #contents";
+    let videoCount = 0;
+
     if (document.querySelector(selector)) {
       const videoList = document.querySelector(selector);
 
@@ -103,52 +92,84 @@ function ContentScript() {
         videoCount = videos.length;
 
         for (let video of videos) {
-          if (filterByChannel(video) || filterByTitle(video)) {
-            videoCount -= 1;
-            console.log(
-              video.querySelector("#video-title").title,
-              video.querySelector("#text-container > yt-formatted-string")
-                .innerHTML
-            );
-            video.remove();
+          if (filterByTitleWatch(video) || filterByChannelWatch(video)) {
+            // video.style.background = "red";
+            video.style.display = "none";
           }
         }
       });
-
       observer.observe(videoList, { subtree: true, childList: true });
     } else {
-      setTimeout(applyFilters, 2000);
+      setTimeout(applyFiltersWatch, 2000);
     }
   };
 
-  applyFilters();
+  const filterByTitleHome = (video) => {
+    if (!video.querySelector("#video-title")) return false;
+    if (wordReg.test(video.querySelector("#video-title").innerText))
+      return true;
+    return false;
+  };
 
-  // const getVideoList = () => {
-  //   const selector = "#items > ytd-item-section-renderer > #contents";
-  //   if (document.querySelector(selector)) {
-  //     const videoList = document.querySelector(selector);
-  //     var filterstrings = [" piano ", " adele ", " at "];
-  //     var regex = new RegExp(filterstrings.join("|"), "i");
+  const filterByChannelHome = (video) => {
+    if (!video.querySelector("#text-container > yt-formatted-string > a"))
+      return false;
+    if (
+      channelReg.test(
+        video.querySelector("#text-container > yt-formatted-string > a")
+          .innerText
+      )
+    )
+      return true;
+    return false;
+  };
 
-  //     const observer = new MutationObserver(() => {
-  //       const els = document
-  //         .querySelector(selector)
-  //         .getElementsByTagName("ytd-compact-video-renderer");
+  const applyFiltersHome = () => {
+    console.log("AFH 🏠");
+    const selector = "ytd-rich-grid-renderer > #contents";
+    let videoCount = 0;
 
-  //       for (let el of els) {
-  //         if (regex.test(el.querySelector("#video-title").title)) {
-  //           el.style.background = "#ff0000";
-  //         }
-  //       }
-  //     });
+    if (document.querySelector(selector)) {
+      const videoList = document.querySelector(selector);
 
-  //     observer.observe(videoList, { subtree: true, childList: true });
-  //   } else {
-  //     setTimeout(getVideoList, 2000);
-  //   }
-  // };
+      const observer = new MutationObserver(() => {
+        if (
+          document
+            .querySelector(selector)
+            .getElementsByTagName("ytd-rich-item-renderer").length <= videoCount
+        )
+          return;
 
-  // getVideoList();
+        const videos = document
+          .querySelector(selector)
+          .getElementsByTagName("ytd-rich-item-renderer");
+
+        videoCount = videos.length;
+
+        for (let video of videos) {
+          if (filterByTitleHome(video) || filterByChannelHome(video)) {
+            // video.style.background = "red";
+            video.style.display = "none";
+          }
+        }
+      });
+      observer.observe(videoList, { subtree: true, childList: true });
+    } else {
+      setTimeout(applyFiltersHome, 2000);
+    }
+  };
+
+  applyFiltersHome();
+  applyFiltersWatch();
+
+  chrome.runtime.onMessage.addListener((msg) => {
+    switch (msg.cmd) {
+      case "apply-filters":
+        applyFilters();
+        console.log(msg);
+        break;
+    }
+  });
 
   return <></>;
 }
