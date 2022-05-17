@@ -11,23 +11,36 @@ function ContentScript() {
     ["at", "valorant"],
     ["dean", "blue", "valorant"],
   ]);
-  const [flag, setFlag] = useState(getFlag());
-
   let wordReg = new RegExp("a^");
   let channelReg = new RegExp("a^");
+  const [flag, setFlag] = useState(getFlag());
+  const [currentUrl, setCurrentUrl] = useState(document.location.href);
+
+  const selectors = [
+    {
+      videoSection: "ytd-rich-grid-renderer > #contents",
+      videoRenderer: "ytd-rich-item-renderer",
+      title: "#video-title",
+      channel: "#text-container > yt-formatted-string > a",
+    },
+    {
+      videoSection: "#items > ytd-item-section-renderer > #contents",
+      videoRenderer: "ytd-compact-video-renderer",
+      title: "#video-title",
+      channel: "#text-container > yt-formatted-string",
+    },
+  ];
 
   // YouTube doesn't reload its pages, it replaces the history state
   // https://stackoverflow.com/questions/3522090/event-when-window-location-href-changes
-
-  let previousUrl = document.location.href;
 
   window.onload = function () {
     let bodyList = document.querySelector("body");
 
     let observer = new MutationObserver((mutations) => {
       mutations.forEach(() => {
-        if (previousUrl !== document.location.href) {
-          previousUrl = document.location.href;
+        if (currentUrl !== document.location.href) {
+          setCurrentUrl(document.location.href);
           setFlag(getFlag());
         }
       });
@@ -50,121 +63,70 @@ function ContentScript() {
     } else {
       channelReg = new RegExp("a^");
     }
-  }, [data]);
+  }, [data, currentUrl]);
 
-  const filterByTitleWatch = (video) => {
-    if (!video.querySelector("#video-title")) return false;
-    if (wordReg.test(video.querySelector("#video-title").innerText))
+  const filterByTitle = (video) => {
+    console.log(wordReg, channelReg);
+    if (!video.querySelector(selectors[flag]["title"])) return false;
+    if (wordReg.test(video.querySelector(selectors[flag]["title"]).innerText)) {
+      console.log(video.querySelector(selectors[flag]["title"]).innerText);
       return true;
+    }
     return false;
   };
 
-  const filterByChannelWatch = (video) => {
-    if (!video.querySelector("#text-container > yt-formatted-string"))
-      return false;
+  const filterByChannel = (video) => {
+    if (!video.querySelector(selectors[flag]["channel"])) return false;
     if (
-      channelReg.test(
-        video.querySelector("#text-container > yt-formatted-string").innerText
-      )
-    )
+      channelReg.test(video.querySelector(selectors[flag]["channel"]).innerText)
+    ) {
       return true;
+    }
     return false;
   };
 
-  const applyFiltersWatch = () => {
-    console.log("AFW 👀");
-
-    const selector = "#items > ytd-item-section-renderer > #contents";
+  const applyFilters = () => {
     let videoCount = 0;
 
-    if (document.querySelector(selector)) {
-      const videoList = document.querySelector(selector);
+    if (document.querySelector(selectors[flag]["videoSection"])) {
+      const videoList = document.querySelector(selectors[flag]["videoSection"]);
 
-      const observer = new MutationObserver(() => {
+      let observer = new MutationObserver(() => {
         if (
           document
-            .querySelector(selector)
-            .getElementsByTagName("ytd-compact-video-renderer").length <=
+            .querySelector(selectors[flag]["videoSection"])
+            .getElementsByTagName(selectors[flag]["videoRenderer"]).length <=
           videoCount
         )
           return;
 
         const videos = document
-          .querySelector(selector)
-          .getElementsByTagName("ytd-compact-video-renderer");
+          .querySelector(selectors[flag]["videoSection"])
+          .getElementsByTagName(selectors[flag]["videoRenderer"]);
 
         videoCount = videos.length;
+        console.log("🤖 inside observer");
 
         for (let video of videos) {
-          if (filterByTitleWatch(video) || filterByChannelWatch(video)) {
+          if (filterByTitle(video) || filterByChannel(video)) {
             // video.style.background = "red";
             video.style.display = "none";
           }
         }
       });
+
       observer.observe(videoList, { subtree: true, childList: true });
     } else {
-      setTimeout(applyFiltersWatch, 2000);
+      setTimeout(applyFilters, 2000);
     }
   };
 
-  const filterByTitleHome = (video) => {
-    if (!video.querySelector("#video-title")) return false;
-    if (wordReg.test(video.querySelector("#video-title").innerText))
-      return true;
-    return false;
-  };
+  applyFilters();
 
-  const filterByChannelHome = (video) => {
-    if (!video.querySelector("#text-container > yt-formatted-string > a"))
-      return false;
-    if (
-      channelReg.test(
-        video.querySelector("#text-container > yt-formatted-string > a")
-          .innerText
-      )
-    )
-      return true;
-    return false;
-  };
-
-  const applyFiltersHome = () => {
-    console.log("AFH 🏠");
-    const selector = "ytd-rich-grid-renderer > #contents";
-    let videoCount = 0;
-
-    if (document.querySelector(selector)) {
-      const videoList = document.querySelector(selector);
-
-      const observer = new MutationObserver(() => {
-        if (
-          document
-            .querySelector(selector)
-            .getElementsByTagName("ytd-rich-item-renderer").length <= videoCount
-        )
-          return;
-
-        const videos = document
-          .querySelector(selector)
-          .getElementsByTagName("ytd-rich-item-renderer");
-
-        videoCount = videos.length;
-
-        for (let video of videos) {
-          if (filterByTitleHome(video) || filterByChannelHome(video)) {
-            // video.style.background = "red";
-            video.style.display = "none";
-          }
-        }
-      });
-      observer.observe(videoList, { subtree: true, childList: true });
-    } else {
-      setTimeout(applyFiltersHome, 2000);
-    }
-  };
-
-  applyFiltersHome();
-  applyFiltersWatch();
+  useEffect(() => {
+    console.log("🤯 Url changed");
+    applyFilters();
+  }, [currentUrl]);
 
   chrome.runtime.onMessage.addListener((msg) => {
     switch (msg.cmd) {
