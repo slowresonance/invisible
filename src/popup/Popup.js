@@ -7,10 +7,17 @@ function Popup() {
 
   const [data, setData] = useState([]);
 
+  useEffect(() => {
+    chrome.storage.local.get("invisible", (items) => {
+      setData(items["invisible"]);
+    });
+  }, []);
+
   const wordsRef = useRef();
   const channelsRef = useRef();
 
   useEffect(() => {
+    console.log(data);
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, {
         from: "popup",
@@ -20,6 +27,11 @@ function Popup() {
         channelStatus: channelStatus,
       });
     });
+
+    if (data.length !== 0) {
+      wordsRef.current.value = data[0].join("\r\n");
+      channelsRef.current.value = data[1].join("\r\n");
+    }
   }, [data]);
 
   const handleSubmit = () => {
@@ -28,6 +40,10 @@ function Popup() {
 
     words = words.map((word) => word.trim());
     channels = channels.map((channel) => channel.trim());
+
+    chrome.storage.local.set({ invisible: [words, channels] }, () => {
+      console.log("saved");
+    });
 
     setData([words, channels]);
   };

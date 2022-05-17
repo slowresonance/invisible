@@ -23,5 +23,5 @@
     }
   ],
   "optional_permissions": ["<all_urls>"],
-  "permissions": ["tabs", "activeTab"]
+  "permissions": ["tabs", "activeTab", "storage"]
 }

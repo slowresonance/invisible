@@ -6,30 +6,43 @@ const getFlag = () => {
     return 1;
 };
 
+const selectors = [
+  {
+    videoSection: "ytd-rich-grid-renderer > #contents",
+    videoRenderer: "ytd-rich-item-renderer",
+    title: "#video-title",
+    channel: "#text-container > yt-formatted-string > a",
+  },
+  {
+    videoSection: "#items > ytd-item-section-renderer > #contents",
+    videoRenderer: "ytd-compact-video-renderer",
+    title: "#video-title",
+    channel: "#text-container > yt-formatted-string",
+  },
+];
+
 function ContentScript() {
-  const [data, setData] = useState([
-    ["at", "valorant"],
-    ["dean", "blue", "valorant"],
-  ]);
-  let wordReg = new RegExp("a^");
-  let channelReg = new RegExp("a^");
+  const [data, setData] = useState([[""], [""]]);
+
+  const getRegex = () => {
+    const tempReg = [];
+    if (data[0].length === 1 && data[0][0] === "") {
+      tempReg["word"] = new RegExp("a^");
+    } else {
+      tempReg["word"] = new RegExp(data[0].join("|"), "i");
+    }
+    if (data[1].length === 1 && data[1][0] === "") {
+      tempReg["channel"] = new RegExp("a^");
+    } else {
+      tempReg["channel"] = new RegExp(data[1].join("|"), "i");
+    }
+    console.log("🛑", tempReg);
+    return tempReg;
+  };
+
+  const [regex, setRegex] = useState(getRegex());
   const [flag, setFlag] = useState(getFlag());
   const [currentUrl, setCurrentUrl] = useState(document.location.href);
-
-  const selectors = [
-    {
-      videoSection: "ytd-rich-grid-renderer > #contents",
-      videoRenderer: "ytd-rich-item-renderer",
-      title: "#video-title",
-      channel: "#text-container > yt-formatted-string > a",
-    },
-    {
-      videoSection: "#items > ytd-item-section-renderer > #contents",
-      videoRenderer: "ytd-compact-video-renderer",
-      title: "#video-title",
-      channel: "#text-container > yt-formatted-string",
-    },
-  ];
 
   // YouTube doesn't reload its pages, it replaces the history state
   // https://stackoverflow.com/questions/3522090/event-when-window-location-href-changes
@@ -53,23 +66,16 @@ function ContentScript() {
   };
 
   useEffect(() => {
-    if (data[0] !== []) {
-      wordReg = new RegExp(data[0].join("|"), "i");
-    } else {
-      wordReg = new RegExp("a^");
-    }
-    if (data[1] !== []) {
-      channelReg = new RegExp(data[1].join("|"), "i");
-    } else {
-      channelReg = new RegExp("a^");
-    }
+    setRegex(getRegex());
   }, [data, currentUrl]);
 
   const filterByTitle = (video) => {
-    console.log(wordReg, channelReg);
     if (!video.querySelector(selectors[flag]["title"])) return false;
-    if (wordReg.test(video.querySelector(selectors[flag]["title"]).innerText)) {
-      console.log(video.querySelector(selectors[flag]["title"]).innerText);
+    if (
+      regex["word"].test(
+        video.querySelector(selectors[flag]["title"]).innerText
+      )
+    ) {
       return true;
     }
     return false;
@@ -78,7 +84,9 @@ function ContentScript() {
   const filterByChannel = (video) => {
     if (!video.querySelector(selectors[flag]["channel"])) return false;
     if (
-      channelReg.test(video.querySelector(selectors[flag]["channel"]).innerText)
+      regex["channel"].test(
+        video.querySelector(selectors[flag]["channel"]).innerText
+      )
     ) {
       return true;
     }
@@ -105,32 +113,54 @@ function ContentScript() {
           .getElementsByTagName(selectors[flag]["videoRenderer"]);
 
         videoCount = videos.length;
-        console.log("🤖 inside observer");
+        // console.clear();
+        console.log(currentUrl);
+        console.log(data);
+        console.log(regex["word"], regex["channel"]);
 
         for (let video of videos) {
+          video.style = "";
           if (filterByTitle(video) || filterByChannel(video)) {
-            // video.style.background = "red";
-            video.style.display = "none";
+            // console.log(
+            //   video.querySelector(selectors[flag]["title"]).innerText.trim(),
+            //   video.querySelector(selectors[flag]["channel"]).innerText.trim()
+            // );
+            video.style.background = "red";
+            // video.style.display = "none";
           }
         }
       });
 
       observer.observe(videoList, { subtree: true, childList: true });
     } else {
-      setTimeout(applyFilters, 2000);
+      setTimeout(applyFilters, 100);
     }
   };
 
   applyFilters();
 
   useEffect(() => {
-    console.log("🤯 Url changed");
     applyFilters();
   }, [currentUrl]);
+
+  const updateData = (msg) => {
+    if (msg.data.length === 0) return;
+
+    let tempData = [[], []];
+    if (msg.wordStatus) {
+      tempData[0] = [].concat(msg.data[0]);
+    }
+    if (msg.channelStatus) {
+      tempData[1] = [].concat(msg.data[1]);
+    }
+
+    setData(tempData);
+  };
 
   chrome.runtime.onMessage.addListener((msg) => {
     switch (msg.cmd) {
       case "apply-filters":
+        updateData(msg);
         applyFilters();
         console.log(msg);
         break;
