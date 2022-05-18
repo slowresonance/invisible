@@ -114,9 +114,9 @@ function ContentScript() {
 
         videoCount = videos.length;
         // console.clear();
-        console.log(currentUrl);
-        console.log(data);
-        console.log(regex["word"], regex["channel"]);
+        // console.log(currentUrl);
+        // console.log(data);
+        // console.log(regex["word"], regex["channel"]);
 
         for (let video of videos) {
           video.style = "";
@@ -146,7 +146,7 @@ function ContentScript() {
   const updateData = (msg) => {
     if (msg.data.length === 0) return;
 
-    let tempData = [[], []];
+    let tempData = [[""], [""]];
     if (msg.wordStatus) {
       tempData[0] = [].concat(msg.data[0]);
     }
@@ -154,6 +154,7 @@ function ContentScript() {
       tempData[1] = [].concat(msg.data[1]);
     }
 
+    console.log(tempData);
     setData(tempData);
   };
 

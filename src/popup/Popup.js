@@ -8,13 +8,37 @@ function Popup() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    chrome.storage.local.get("invisible", (items) => {
-      setData(items["invisible"]);
+    chrome.storage.local.get("invisible-data", (items) => {
+      if (typeof items["invisible-data"] !== "undefined") {
+        chrome.storage.local.get("invisible-data", (items) => {
+          setData(items["invisible-data"]);
+        });
+      }
+    });
+    chrome.storage.local.get("invisible-word-toggle", (items) => {
+      if (typeof items["invisible-word-toggle"] !== "undefined") {
+        chrome.storage.local.get("invisible-word-toggle", (items) => {
+          console.log(items["invisible-word-toggle"]);
+          setWordStatus(items["invisible-word-toggle"]);
+        });
+      }
+    });
+    chrome.storage.local.get("invisible-channel-toggle", (items) => {
+      if (typeof items["invisible-channel-toggle"] !== "undefined") {
+        chrome.storage.local.get("invisible-channel-toggle", (items) => {
+          console.log(items["invisible-channel-toggle"]);
+          setChannelStatus(items["invisible-channel-toggle"]);
+        });
+      }
     });
   }, []);
 
   const wordsRef = useRef();
   const channelsRef = useRef();
+
+  useEffect(() => {
+    console.log(wordStatus, channelStatus);
+  }, [wordStatus, channelStatus]);
 
   useEffect(() => {
     console.log(data);
@@ -41,9 +65,20 @@ function Popup() {
     words = words.map((word) => word.trim());
     channels = channels.map((channel) => channel.trim());
 
-    chrome.storage.local.set({ invisible: [words, channels] }, () => {
+    chrome.storage.local.set({ "invisible-data": [words, channels] }, () => {
       console.log("saved");
     });
+
+    chrome.storage.local.set({ "invisible-word-toggle": wordStatus }, () => {
+      console.log("saved");
+    });
+
+    chrome.storage.local.set(
+      { "invisible-channel-toggle": channelStatus },
+      () => {
+        console.log("saved");
+      }
+    );
 
     setData([words, channels]);
   };
@@ -52,7 +87,11 @@ function Popup() {
     <>
       <div id="invisibility-cloak">
         <div className="section">
-          <Checkbox label={"Filter videos by words"}></Checkbox>
+          <Checkbox
+            checkboxValue={wordStatus}
+            setCheckboxValue={setWordStatus}
+            label={"Filter videos by words"}
+          ></Checkbox>
           <div className="textbox-container" id="words">
             <textarea
               name="words"
@@ -64,7 +103,11 @@ function Popup() {
           </div>
         </div>
         <div className="section">
-          <Checkbox label={"Filter videos by channel"}></Checkbox>
+          <Checkbox
+            checkboxValue={channelStatus}
+            setCheckboxValue={setChannelStatus}
+            label={"Filter videos by channel"}
+          ></Checkbox>
           <div className="textbox-container" id="channel">
             <textarea
               name={"channel"}
