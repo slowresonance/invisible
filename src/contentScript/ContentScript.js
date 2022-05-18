@@ -43,6 +43,8 @@ function ContentScript() {
   const [regex, setRegex] = useState(getRegex());
   const [flag, setFlag] = useState(getFlag());
   const [currentUrl, setCurrentUrl] = useState(document.location.href);
+  const [wordStatus, setWordStatus] = useState(true);
+  const [channelStatus, setChannelStatus] = useState(true);
 
   // YouTube doesn't reload its pages, it replaces the history state
   // https://stackoverflow.com/questions/3522090/event-when-window-location-href-changes
@@ -67,6 +69,7 @@ function ContentScript() {
 
   useEffect(() => {
     setRegex(getRegex());
+    console.log("😉", data);
   }, [data, currentUrl]);
 
   const filterByTitle = (video) => {
@@ -143,30 +146,50 @@ function ContentScript() {
     applyFilters();
   }, [currentUrl]);
 
-  const updateData = (msg) => {
-    if (msg.data.length === 0) return;
+  const updateData = (data) => {
+    if (data.length === 0) return;
+
+    console.log("🥶", wordStatus, channelStatus);
 
     let tempData = [[""], [""]];
-    if (msg.wordStatus) {
-      tempData[0] = [].concat(msg.data[0]);
+    if (wordStatus) {
+      tempData[0] = [].concat(data[0]);
     }
-    if (msg.channelStatus) {
-      tempData[1] = [].concat(msg.data[1]);
+    if (channelStatus) {
+      tempData[1] = [].concat(data[1]);
     }
 
-    console.log(tempData);
+    console.log("🤗", tempData);
     setData(tempData);
   };
 
   chrome.runtime.onMessage.addListener((msg) => {
     switch (msg.cmd) {
       case "apply-filters":
-        updateData(msg);
+        setWordStatus(msg.wordStatus);
+        setChannelStatus(msg.channelStatus);
+        updateData(msg.data);
         applyFilters();
         console.log(msg);
         break;
     }
   });
+
+  useEffect(() => {
+    chrome.storage.local.get("invisible-word-toggle", (items) => {
+      setWordStatus(items["invisible-word-toggle"]);
+    });
+    chrome.storage.local.get("invisible-channel-toggle", (items) => {
+      setChannelStatus(items["invisible-channel-toggle"]);
+    });
+    chrome.storage.local.get("invisible-data", (items) => {
+      updateData(items["invisible-data"]);
+    });
+  }, []);
+
+  useEffect(() => {
+    console.log(wordStatus, channelStatus);
+  }, [wordStatus, channelStatus]);
 
   return <></>;
 }
