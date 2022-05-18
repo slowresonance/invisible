@@ -23,28 +23,27 @@ const selectors = [
 
 function ContentScript() {
   const [data, setData] = useState([[""], [""]]);
+  const [wordStatus, setWordStatus] = useState(true);
+  const [channelStatus, setChannelStatus] = useState(true);
 
   const getRegex = () => {
     const tempReg = [];
-    if (data[0].length === 1 && data[0][0] === "") {
+    if (!wordStatus || (data[0].length === 1 && data[0][0] === "")) {
       tempReg["word"] = new RegExp("a^");
     } else {
       tempReg["word"] = new RegExp(data[0].join("|"), "i");
     }
-    if (data[1].length === 1 && data[1][0] === "") {
+    if (!channelStatus || (data[1].length === 1 && data[1][0] === "")) {
       tempReg["channel"] = new RegExp("a^");
     } else {
       tempReg["channel"] = new RegExp(data[1].join("|"), "i");
     }
-    console.log("🛑", tempReg);
     return tempReg;
   };
 
   const [regex, setRegex] = useState(getRegex());
   const [flag, setFlag] = useState(getFlag());
   const [currentUrl, setCurrentUrl] = useState(document.location.href);
-  const [wordStatus, setWordStatus] = useState(true);
-  const [channelStatus, setChannelStatus] = useState(true);
 
   // YouTube doesn't reload its pages, it replaces the history state
   // https://stackoverflow.com/questions/3522090/event-when-window-location-href-changes
@@ -69,7 +68,6 @@ function ContentScript() {
 
   useEffect(() => {
     setRegex(getRegex());
-    console.log("😉", data);
   }, [data, currentUrl]);
 
   const filterByTitle = (video) => {
@@ -117,17 +115,13 @@ function ContentScript() {
 
         videoCount = videos.length;
         // console.clear();
-        // console.log(currentUrl);
-        // console.log(data);
-        // console.log(regex["word"], regex["channel"]);
+        console.log(currentUrl);
+        console.log(data);
+        console.log(regex["word"], regex["channel"]);
 
         for (let video of videos) {
           video.style = "";
           if (filterByTitle(video) || filterByChannel(video)) {
-            // console.log(
-            //   video.querySelector(selectors[flag]["title"]).innerText.trim(),
-            //   video.querySelector(selectors[flag]["channel"]).innerText.trim()
-            // );
             video.style.background = "red";
             // video.style.display = "none";
           }
@@ -149,8 +143,6 @@ function ContentScript() {
   const updateData = (data) => {
     if (data.length === 0) return;
 
-    console.log("🥶", wordStatus, channelStatus);
-
     let tempData = [[""], [""]];
     if (wordStatus) {
       tempData[0] = [].concat(data[0]);
@@ -159,7 +151,6 @@ function ContentScript() {
       tempData[1] = [].concat(data[1]);
     }
 
-    console.log("🤗", tempData);
     setData(tempData);
   };
 
@@ -178,18 +169,14 @@ function ContentScript() {
   useEffect(() => {
     chrome.storage.local.get("invisible-word-toggle", (items) => {
       setWordStatus(items["invisible-word-toggle"]);
-    });
-    chrome.storage.local.get("invisible-channel-toggle", (items) => {
-      setChannelStatus(items["invisible-channel-toggle"]);
-    });
-    chrome.storage.local.get("invisible-data", (items) => {
-      updateData(items["invisible-data"]);
+      chrome.storage.local.get("invisible-channel-toggle", (items) => {
+        setChannelStatus(items["invisible-channel-toggle"]);
+        chrome.storage.local.get("invisible-data", (items) => {
+          updateData(items["invisible-data"]);
+        });
+      });
     });
   }, []);
-
-  useEffect(() => {
-    console.log(wordStatus, channelStatus);
-  }, [wordStatus, channelStatus]);
 
   return <></>;
 }

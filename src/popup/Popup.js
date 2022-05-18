@@ -41,6 +41,10 @@ function Popup() {
   }, [wordStatus, channelStatus]);
 
   useEffect(() => {
+    if (data.length === 0) {
+      return;
+    }
+    console.log("🥵 Hello");
     console.log(data);
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, {
